@@ -7,9 +7,17 @@ dotenv.config();
 (async () => {
   try {
     //initialising browser
-    const browser = await puppeteer.launch({headless: false, devtools: true, args: ['--disable-web-security', '--disable-features=IsolateOrigins', ' --disable-site-isolation-trials']});
+    const browser = await puppeteer.launch({
+      headless: false,
+      devtools: true,
+      args: [
+        "--disable-web-security",
+        "--disable-features=IsolateOrigins",
+        " --disable-site-isolation-trials",
+      ],
+    });
     const page = await browser.newPage();
-    await page.setViewport({ width: 1000, height: 500 });
+    await page.setViewport({ width: 700, height: 600 });
     await page.goto("https://play.anghami.com/login");
 
     //choosing login type
@@ -47,31 +55,49 @@ dotenv.config();
       page.waitForNavigation({ waitUntil: "networkidle0" })
     ]);
     await delay(1000);
-    const likes = await page.evaluate(() => {
+    
+    //-----------------------------------------------
+    const likes = await page.evaluate(async() => {
+      function delay(time) {
+        return new Promise(function (resolve) {
+          setTimeout(resolve, time);
+        });
+      }
       songs = [];
-      songcount = document.querySelector("#base_content > div > anghami-mymusic-new > div > div > div.mymusic-displayed-content.ang-view > div > div > div.tabbed-section-title-parent > div.num-songs-container > span.num-songs").innerText;
-      songcount = songcount.replace(",","");
+      //getting number of likes
+      songcount = await document.querySelector(
+        "#base_content > div > anghami-mymusic-new > div > div > div.mymusic-displayed-content.ang-view > div > div > div.tabbed-section-title-parent > div.num-songs-container > span.num-songs"
+      ).innerText;
+      songcount = await songcount.replace(",", "");
       var nosongs = parseInt(songcount);
-      console.log("number of likes "+nosongs);
-      for(let count = 1;count<=nosongs;count++){
-        //delay(200);
-        console.log("iteration "+count);
-        songName = document.querySelector(`#base_content > div > anghami-mymusic-new > div > div > div.mymusic-displayed-content.ang-view > div > anghami-new-section-builder > div:nth-child(2) > div > anghami-list-section > div > div > div > div:nth-child(${count}) > div.cell.cell-title > span`).innerText;
-        songAuthor = document.querySelector(`#base_content > div > anghami-mymusic-new > div > div > div.mymusic-displayed-content.ang-view > div > anghami-new-section-builder > div:nth-child(2) > div > anghami-list-section > div > div > div > div:nth-child(${count}) > div.cell.cell-artist > a`).innerText;
+      console.log("number of likes " + nosongs);
+      
+      //looping on likes
+      for (let count = 1; count <= nosongs; count++) {
         if(count%10==0){
-          window.scrollBy(0,window.innerHeight);
-          delay(100);
+          window.scrollBy(0, window.innerHeight * 20);
+          await delay(50);
         }
+        //getting song name
+        songName = await document.querySelector(
+          `#base_content > div > anghami-mymusic-new > div > div > div.mymusic-displayed-content.ang-view > div > anghami-new-section-builder > div:nth-child(2) > div > anghami-list-section > div > div > div > div:nth-child(${count}) > div.cell.cell-title > span`
+        ).innerText;
+
+        //getting song author
+        songAuthor = await document.querySelector(
+          `#base_content > div > anghami-mymusic-new > div > div > div.mymusic-displayed-content.ang-view > div > anghami-new-section-builder > div:nth-child(2) > div > anghami-list-section > div > div > div > div:nth-child(${count}) > div.cell.cell-artist > a`
+        ).innerText;
         song = { id: count, track: songName, author: songAuthor };
+        await songs.push(song);
         console.log(song);
-        songs.push(song);  
       }
       return songs;
     });
     console.log(likes);
     console.log("finished scraping");
+    storeDataInJSON("./likes.json", likes);
     //closing the browser
-    //await browser.close();
+    await browser.close();
   } catch (error) {
     console.error();
   }
@@ -82,3 +108,14 @@ function delay(time) {
     setTimeout(resolve, time);
   });
 }
+
+//Storig data into json file
+const storeDataInJSON = async (file, data) => {
+  console.log(data);
+  return fs.writeFileSync(file, JSON.stringify(data), (err) => {
+    if (err) {
+      return err;
+    }
+    return;
+  });
+};
